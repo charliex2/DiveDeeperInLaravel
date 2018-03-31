@@ -14,6 +14,7 @@ class Container
     // 将一个具体的实物绑定给一个缩写
     public function bind($abstract, $concrete = null, $shared = false)
     {
+        // 如果concrete不是一个闭包，则需要自己创建一个闭包函数
         if (!$concrete instanceof Closure) {
             $concrete = $this->getClosure($abstract, $concrete);
         }
@@ -22,8 +23,10 @@ class Container
 
     protected function getClosure($abstract, $concrete)
     {
+        // 该闭包函数的参数 $c 即为 Container 实例
         return function ($c) use ($abstract, $concrete) {
-            // 这里啥意思
+            // 如果$abstract 和 concrete 不相同，则调用 make 方法
+            // 如果相同，则直接调用 build 方法
             $method = ($abstract == $concrete) ? 'build' : "make";
             // 调用 make 或者 build 方法生成实例
             return $c->$method($concrete);
@@ -32,10 +35,15 @@ class Container
 
     public function make($abstract)
     {
+        //这里的 $abstract 其实是上一个方法 getClosure 的 $concrete 参数
+        // 先用 getConcrete 函数去 bindings 里面找找看，如果找得到就返回，找不到就算了。
         $concrete = $this->getConcrete($abstract);
+
+        // 检查一下能不能 Build
         if ($this->isBuildable($concrete, $abstract)) {
             $object = $this->build($concrete);
         } else {
+            // 如果不能 build，也就是说在 $bindings 数组中 key 和 value 不一样，再调用 make 方法去找 以这个 value 为键的值是否存在
             $object = $this->make($concrete);
         }
         return $object;
@@ -52,7 +60,8 @@ class Container
 
     protected function isBuildable($concrete, $abstract)
     {
-        // $concrete === $abstract 是什么意思？
+        // 判断的标准就是
+        // 如果 $abstract 和 $concrete 相同，或者 $concrete 是一个闭包函数，那么就是 buildable
         return $concrete === $abstract || $concrete instanceof Closure;
     }
 
